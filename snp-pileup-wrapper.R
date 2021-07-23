@@ -13,7 +13,7 @@ parser = ArgumentParser(description = 'Generate SNP read counts from matched tum
 
 parser$add_argument('-v', '--verbose', action = "store_true", default = TRUE,
                     help = 'Print run info')
-parser$add_argument('-co', '--count-orphans', action = 'store_true', help= "count anamolous read pairs")
+parser$add_argument('-co', '--count-orphans', help= "count anamolous read pairs", required = FALSE)
 parser$add_argument('-sp', '--snp-pileup-path', required = FALSE,
                     help = 'Path to snp-pileup executable [default environment variable $SNP_PILEUP]')
 parser$add_argument('-vcf', '--vcf-file', required = TRUE,
