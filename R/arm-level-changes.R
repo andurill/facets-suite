@@ -268,6 +268,8 @@ arm_level_changes_dmp = function(segs,
         summarize(max_arm_len= max(length)) %>%
         mutate(key = paste(arm, max_arm_len, sep = "_")) 
     
+    chrom_arms = gsub('23', 'X', chrom_arms)
+    
     segs.filt = segs.full %>% 
         mutate(key = paste(arm, length, sep = "_")) %>% 
         filter(key %in% maxarm$key, arm %in% chrom_arms) %>% 
