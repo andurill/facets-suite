@@ -253,9 +253,12 @@ arm_level_changes_dmp = function(segs,
      #              "17p_Loss", "19p_Gain", "19q_Gain", "20q_Loss")
     
     segs.full = segs.full %>%
-        mutate(Class = case_when(cn_state_num>0 ~ 'Gain', 
-                                 cn_state_num<0 ~ 'Loss',
-                                 cn_state_num==0 ~ 'Diploid'),
+        mutate(Class = case_when(cn_state_num=="DIPLOID" ~ 'Diploid', #exclude 1,0 males from being called loss
+                                 chrom==23 & sex=="Male" & cn_state =='GAIN' ~ 'Gain',
+                                 tcn==2 & lcn==0  ~ 'Loss', #CNLOH
+                                 # **gain/loss definitions do not account for WGD, e.g. 3,0 | 4,0 states**
+                                 tcn>2 ~ 'Gain', 
+                                 lcn<2 ~ 'Loss'),
                arm_change = paste(arm, Class, sep = "_"))
     
     maxarm = segs.full %>% 
