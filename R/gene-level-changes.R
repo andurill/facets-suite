@@ -29,6 +29,7 @@
 #' @export
 gene_level_changes = function(facets_output,
                               genome = c('hg19', 'hg38'),
+                              targetFile = NULL,
                               algorithm = c('em', 'cncf')) {
     
     genome = match.arg(genome, c('hg19', 'hg38'), several.ok = FALSE)
@@ -48,7 +49,12 @@ gene_level_changes = function(facets_output,
     
     # Map segments onto genes
     key_cols = c('chrom', 'start', 'end')
-    genes = as.data.table(get(paste0('genes_', genome)))
+    if (!is.null(targetFile)) {
+        genes = as.data.table(get_gene_from_targetFile(targetFile))
+    }
+    else { 
+        genes = as.data.table(get(paste0('genes_', genome)))
+    }
     genes[, chrom := ifelse(chrom == 'X', 23, chrom)]
     genes = genes[chrom %in% seq(1, 23)][, chrom := as.integer(chrom)]
     
@@ -135,6 +141,21 @@ gene_level_changes = function(facets_output,
 #         pnorm(z, lower.tail = TRUE)
 #     }
 # }
+
+get_gene_from_targetFile = function(targetFile) {
+    genes = suppressWarnings(fread(paste0('grep -v "^@"', targetFile), 
+                            header = F,
+                            col.names = c("chr", "start", "end", "strand", "name"))) %>%
+        filter(grep("^Tiling_|^FP_|_intron_|_pseudo_|_MSI_|_tiling_|_promoter_", name, invert=TRUE)) %>%
+        mutate(chrom = str_replace(chrom, 'chr', ''),
+                gene = gsub(":.*$", "", gsub("_target_.*$", "", name))) %>%
+        group_by(gene, chrom) %>%
+        summarize(start = min(start),
+                    end = max(end)) %>%
+        ungroup() %>%
+        mutate(tsg = gene %in% tumor_suppressors$hugosymbol)
+    return(genes)
+}
 
 add_tag = function(filter, tag) {
     ifelse(filter == 'PASS',
