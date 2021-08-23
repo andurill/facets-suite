@@ -70,6 +70,10 @@ parser$add_argument('-x', '--useMatchedX', required = FALSE, action="store_true"
                     default = FALSE, help = 'facets2n option: Force matched normal to be used for ChrX normalization')
 parser$add_argument('-df', '--donor-counts-file', required = FALSE, default=NULL,
                     help = 'Merged, gzipped output from snp-pileup for baseline donor sample(s)')
+parser$add_argument('-j', '--json-output', required = FALSE, action="store_true",
+                    help = 'Generate a json output of select facets results')
+parser$add_argument('-tf', '--targetFile', required = FALSE, default=NULL,
+                    help = 'interval list file of gene target coordinates')
 
 
 args = parser$parse_args()
@@ -327,7 +331,7 @@ if (!is.null(args$purity_cval)) {
         write(qc, paste0(name, '.qc.txt'))
 
         # Write gene level // use hisensitivity run
-        gene_level = gene_level_changes(hisens_output, args$genome) %>%
+        gene_level = gene_level_changes(hisens_output, args$genome, args$targetFile) %>%
             add_column(sample = sample_id, .before = 1)
         write(gene_level, paste0(name, '.gene_level.txt'))
 
@@ -374,10 +378,21 @@ if (!is.null(args$purity_cval)) {
         # Write RDS
         saveRDS(purity_output, paste0(name, '_purity.rds'))
         saveRDS(hisens_output, paste0(name, '_hisens.rds'))
+
+        # Generate optional json output
+        if (args$json_output) {
+            generate_json(hisens_output = hisens_output,
+                        purity_output = purity_output,
+                        gene_level = gene_level,
+                        arm_level = arm_level
+                        name = name)
+            
+        }
     }
     if(args$cbs){
         write.table(hisens_output$segsCBS,file = paste(name,"seg_file_with_pval.txt",sep='_'),sep='\t',row.names=F,col.names=T,quote=F)
     }
+
 
 } else {
     name = paste0(directory, '/', sample_id)
@@ -436,5 +451,13 @@ if (!is.null(args$purity_cval)) {
         create_legacy_output(output, directory, sample_id, args$counts_file, '', run_details)
     } else {
         saveRDS(output, paste0(directory, '/', sample_id, '.rds'))
+    }
+
+    # Generate optional json output
+    if (args$json_output) {
+        generate_json(hisens_output = output,
+                      purity_output = NULL,
+                      gene_level = gene_level,
+                      arm_level = arm_level)
     }
 }
