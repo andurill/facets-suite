@@ -21,9 +21,15 @@
 generate_json = function(hisens_output,
                             purity_output,
                             gene_level,
-                            arm_level,
-                            name) {
+                            arm_level) {
     saveRDS(list(hisens_output, purity_output, gene_level, arm_level), file="facets_test.Rdata")
+    jsonlite::write_json(
+        list("FACETS_PROCESSED_DATA_FOR_PLOT" = list(
+            "VERTICAL_LINE_X_COORD_LIST" = "VERTICAL_LINE_X_COORD_LIST", 
+            "Tick_Values" = "Tick_Values")), pretty=T,
+        path = "json_output.txt")
+    return()
+    
 
     # grch37_coordinate 
     VERTICAL_LINE_X_COORD_LIST = c(0, 249250621, 492449994, 690472424, 881626700, 
@@ -83,17 +89,84 @@ generate_json = function(hisens_output,
         Log_DR_counter = Log_DR_counter + 2
     }
 
+    gene_dict = list()
+for (i in seq(nrow(hisens))) {
+  gene_list = strsplit(hisens[i,]$gene_list, ",")[[1]]
+  gene_dict[[i]] = gene_list
+  names(gene_dict)[i] = paste0("Chromosome ", as.character(hisens[i,]$chrom), ": Copy #", i)
+  gene_line_data_cnlor = gene_line_data_valor = list()
+  gene_scatter_data_cnlor = gene_scatter_data_valor = list()
+  gene_line_data_CNCF = gene_line_data_EM = list()
+  gene_cnlr_counter = 1
+  gene_valor_counter = 1
+  scatter_data_counter = 1
+  for (g in gene_list) {
+    scatter_data_for_gene = snps_gene_mapping[snps_gene_mapping$gene == g,]
+    gene_start = unbox(VERTICAL_LINE_X_COORD_LIST[hisens[i,]$chrom] + genes[gene == g,]$gene_start)
+    gene_end = unbox(VERTICAL_LINE_X_COORD_LIST[hisens[i,]$chrom] + genes[gene == g,]$gene_end)
+    gene_cnlr_median = unbox(hisens[i,]$cnlr.median)
+    gene_valor_positive_y = unbox(sqrt(abs(hisens[i,]$mafR)))
+    gene_valor_negative_y = unbox(-sqrt(abs(hisens[i,]$mafR)))
+    gene_line_data_cnlor[[gene_cnlr_counter]] = list(
+      "id" = unbox(g),
+      "data" = list(
+        list(
+          "x" = gene_start, 
+          "y" = gene_cnlr_median),
+        list(
+          "x" = gene_end, 
+          "y" = gene_cnlr_median)))
+    gene_line_data_valor[[gene_valor_counter]] = list(
+      "id" = unbox(paste0(g, " Copy #", as.character(gene_valor_counter), "_Min")),
+      "data" = list(
+        list(
+          "x" = gene_start, 
+          "y" = gene_valor_negative_y),
+        list(
+          "x" = gene_end, 
+          "y" = gene_valor_negative_y)))
+    gene_line_data_valor[[gene_valor_counter]] = list(
+      "id" = unbox(paste0(g, " Copy #", as.character(gene_valor_counter), "_Max")),
+      "data" = list(
+        list(
+          "x" = gene_start, 
+          "y" = gene_valor_positive_y),
+        list(
+          "x" = gene_end, 
+          "y" = gene_valor_positive_y)))
+    gene_line_data_CNCF[[gene_cnlr_counter]] = list(
+      "id" = unbox(paste0(g, " Copy #", as.character(gene_cnlr_counter), "_TCN")),
+      "data" = list(
+        list(
+          "x" = gene_start, 
+          "y" = gene_tcn,
+        list(
+          "x" = gene_end, 
+          "y" = gene_tcn))))
+    gene_line_data_CNCF[[gene_cnlr_counter]] = list(
+      "id" = unbox(paste0(g, " Copy #", as.character(gene_cnlr_counter), "_LCN")),
+      "data" = list(
+        list(
+          "x" = gene_start, 
+          "y" = gene_lcn,
+          list(
+            "x" = gene_end, 
+            "y" = gene_lcn))))
+    gene_cnlr_counter = gene_cnlr_counter + 1
+    gene_valor_counter= gene_valor_counter + 2
+  }
+}
+
     jsonlite::write_json(
         list("FACETS_PROCESSED_DATA_FOR_PLOT" = list(
             "VERTICAL_LINE_X_COORD_LIST" = VERTICAL_LINE_X_COORD_LIST, 
             "Tick_Values" = Tick_Values), 
             "CNLRPlot" = list("Line_Data" =  Line_Data_CNLOR,
-                            "Segment_mean" = Segment_mean,
+                            #"Segment_mean" = Segment_mean,
                             "Scatter_Data" = Scatter_Data),
             "VALORPlot" = list("Line_Data" = Line_Data_VALOR,
                             "Log_DR" = Log_DR)), pretty=T,
-        path = paste(name, "json_output.txt", sep = "_")
-    )
+        path = "json_output.txt")
 }
 
 
