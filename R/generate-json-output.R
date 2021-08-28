@@ -21,7 +21,9 @@
 generate_json = function(hisens_output,
                             purity_output,
                             gene_level,
-                            arm_level) {
+                            arm_level,
+                            name,
+                            parameters) {
     saveRDS(list(hisens_output, purity_output, gene_level, arm_level), file="facets_test.Rdata")
     jsonlite::write_json(
         list("FACETS_PROCESSED_DATA_FOR_PLOT" = list(
@@ -72,14 +74,12 @@ generate_json = function(hisens_output,
                 start = "seg_start", 
                 end = "seg_end"), gene_list := i.gene]
 
-    #hisens_by_chr = hisens[, list(start = min(start), end = max(end)), by = chrom]
 
-
-    # Log odds plot line data
-    Line_Data_CNLOR = list()
+    # log ratio plot line data
+    Line_Data_CNLR = list()
     Segment_mean = list()
     for (i in seq(nrow(hisens))) {
-      Line_Data_CNLOR[[i]] = list(
+      Line_Data_CNLR[[i]] = list(
         "id" = unbox(paste0("Chromosome ", hisens[i,]$chrom, ": Copy #", i)),
         "data" = list(
           list(
@@ -94,33 +94,46 @@ generate_json = function(hisens_output,
       names(Segment_mean)[i] = paste0("Chromosome ", as.character(hisens[i,]$chrom), ": Copy #", i)
     }
 
-    # Log odds and variant log odds plot scatter data
+    # log ratio and log odds ration plot scatter data
     snps = as.data.table(hisens_output[[1]]$snps)
     CNLR_Scatter_Data = VALOR_Scatter_Data = list()
     for (chrom_var in unique(snps$chrom)) {
       cnlr_data_points = valor_data_points = list()
       snps_per_chrom = snps[snps$chrom == chrom_var,]
+      # additional counters are being defined here instead of
+      #  using the i variable in the for loop below as a counter
+      #  because certain snps might have NA as value for valor
+      #  and they will be skipped. But the indices of the 
+      #  valor_data_points list should be continunous
+      cnlr_data_point_counter = valor_data_point_counter = 1
       for (i in seq(1, nrow(snps_per_chrom))) {
-        cnlr_data_points[[i]] = list(
+        cnlr_data_points[[cnlr_data_point_counter]] = list(
           "x" = unbox(VERTICAL_LINE_X_COORD_LIST[chrom_var] + snps_per_chrom[i,]$maploc), 
           "y" = unbox(snps_per_chrom[i,]$cnlr))
         if (!is.na(snps_per_chrom[i,]$valor)) {
-          valor_data_points[[i]] = list(
+          valor_data_points[[valor_data_point_counter]] = list(
             "x" = unbox(VERTICAL_LINE_X_COORD_LIST[chrom_var] + snps_per_chrom[i,]$maploc), 
             "y" = unbox(snps_per_chrom[i,]$valor))
+          # add +1 to valor_data_point_counter only when a 
+          #  snp with a floating point value for valor (i.e., hetSNP) is
+          #  encountered.
+          valor_data_point_counter = valor_data_point_counter + 1
         }
-        CNLR_Scatter_Data[[chrom_var]] = list(
-          "id" = unbox(paste0("Chromosome ", chrom_var)),
-          "data" = cnlr_data_points
-        )
-        VALOR_Scatter_Data[[chrom_var]] = list(
-          "id" = unbox(paste0("Chromosome ", chrom_var)),
-          "data" = valor_data_points
-        )
+        # add +1 to cnlr_data_point_counter for every SNP
+        cnlr_data_point_counter = cnlr_data_point_counter + 1
       }
+      CNLR_Scatter_Data[[chrom_var]] = list(
+        "id" = unbox(paste0("Chromosome ", chrom_var)),
+        "data" = cnlr_data_points
+      )
+      VALOR_Scatter_Data[[chrom_var]] = list(
+        "id" = unbox(paste0("Chromosome ", chrom_var)),
+        "data" = valor_data_points
+      )
     }
 
-    # variant log odds ratio plot line data
+
+    # log odds ratio plot line data
     Line_Data_VALOR = Log_DR = list()
     Log_DR_counter = 1
     for (i in seq(nrow(hisens))) {
@@ -193,7 +206,7 @@ generate_json = function(hisens_output,
       Log_DR_counter = Log_DR_counter + 2
     }
       
-
+    # Gene level data segment of the json
     gene_dict = list()
     gene_dict_counter = 1
     for (i in seq(nrow(hisens))) {
@@ -206,11 +219,14 @@ generate_json = function(hisens_output,
       gene_counter = 1
       for (g in gene_list) {
         scatter_data_for_gene = snps_gene_mapping[snps_gene_mapping$gene == g,]
+        
         # snp level data organization for each gene
         # scatter_data_for_gene should never be empty for a given segment
         scatter_data_counter = 1
-        for (s in seq(1, nrows(scatter_data_for_gene))) {
-          gene_scatter_data_cnlor[[scatter_data_counter]] = list(
+        gene_scatter_data_cnlr = list()
+        gene_scatter_data_valor = list()
+        for (s in seq(1, nrow(scatter_data_for_gene))) {
+          gene_scatter_data_cnlr[[scatter_data_counter]] = list(
             "x" = unbox(VERTICAL_LINE_X_COORD_LIST[hisens[i,]$chrom] + scatter_data_for_gene[s,]$maploc), 
             "y" = unbox(scatter_data_for_gene[s,]$cnlr))
           if (!is.na(scatter_data_for_gene[s,]$valor)) {
@@ -220,7 +236,15 @@ generate_json = function(hisens_output,
           }
           scatter_data_counter = scatter_data_counter + 1
         }
+        
         # gene level data organization
+        # gene_cnlr_counter and gene_valor_counter should, in theory, will always be 1
+        #  in the current implementation. If facets were to support intragenic gene level
+        #  calls in the future with multiple rows for a given gene in the gene level file,
+        #  this block needs to be updated to indicate multiple segments within a gene. These
+        #  counters will be server to distinguish the segments within a gene.
+        gene_cnlr_counter = 1
+        gene_valor_counter = 1
         gene_start = unbox(VERTICAL_LINE_X_COORD_LIST[hisens[i,]$chrom] + genes[gene == g,]$gene_start)
         gene_end = unbox(VERTICAL_LINE_X_COORD_LIST[hisens[i,]$chrom] + genes[gene == g,]$gene_end)
         gene_tcn = unbox(hisens[i,]$tcn)
@@ -230,7 +254,7 @@ generate_json = function(hisens_output,
         gene_cnlr_median = unbox(hisens[i,]$cnlr.median)
         gene_valor_positive_y = unbox(sqrt(abs(hisens[i,]$mafR)))
         gene_valor_negative_y = unbox(-sqrt(abs(hisens[i,]$mafR)))
-        gene_line_data_cnlor = list(
+        gene_line_data_cnlr = list(
           "id" = unbox(g),
           "data" = list(
             list(
@@ -240,7 +264,7 @@ generate_json = function(hisens_output,
               "x" = gene_end, 
               "y" = gene_cnlr_median)))
         gene_line_data_valor_min = list(
-          "id" = unbox(paste0(g, " Copy #", as.character(gene_valor_counter), "_Min")),
+          "id" = unbox(paste0(g, " Copy #", as.character(gene_valor_counter), "Min")),
           "data" = list(
             list(
               "x" = gene_start, 
@@ -298,17 +322,17 @@ generate_json = function(hisens_output,
         gene_data_current_gene = list(
           g = list(
             "CNLRPlot" = list(
-              "Line_Data" = gene_line_data_cnlor,
+              "Line_Data" = gene_line_data_cnlr,
               "Scatter_Data" = list(
-                "id" = g,
-                "data" = gene_scatter_data_cnlor)
+                "id" = unbox(g),
+                "data" = gene_scatter_data_cnlr)
             ),
             "VALORPlot" = list(
               "Line_Data" = list(
                 gene_line_data_valor_min, 
                 gene_line_data_valor_max),
               "Scatter_Data" = list(
-                "id" = g,
+                "id" = unbox(g),
                 "data" = gene_scatter_data_valor)
             ),
             "ICNPlot" = list(
@@ -342,7 +366,7 @@ generate_json = function(hisens_output,
         "FACETS_PROCESSED_DATA_FOR_PLOT" = list(
           "VERTICAL_LINE_X_COORD_LIST" = VERTICAL_LINE_X_COORD_LIST, 
           "Tick_Values" = Tick_Values, 
-          "CNLRPlot" = list("Line_Data" =  Line_Data_CNLOR,
+          "CNLRPlot" = list("Line_Data" =  Line_Data_CNLR,
                             "Segment_mean" = Segment_mean,
                             "Scatter_Data" = CNLR_Scatter_Data),
           "VALORPlot" = list("Line_Data" = Line_Data_VALOR,
@@ -359,7 +383,7 @@ generate_json = function(hisens_output,
           "purity_min_het" = purity_min_het,
           "normal_depth" = normal_depth
         )
-      ), pretty=T, path = "~/json.txt")
+      ), pretty=T, path = paste0(name, "_facets_json_output.txt")
 }
 
 
