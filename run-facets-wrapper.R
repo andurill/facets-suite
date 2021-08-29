@@ -7,6 +7,8 @@ suppressPackageStartupMessages({
     library(egg)
     library(purrr)
     library(tibble)
+    library(data.table)
+    library(jsonlite)
 })
 
 args = commandArgs(TRUE)
@@ -79,6 +81,15 @@ parser$add_argument('-tf', '--targetFile', required = FALSE, default=NULL,
 args = parser$parse_args()
 
 # Helper functions ------------------------------------------------------------------------------------------------
+
+# TODO: temp block, remove after building
+source_local <- function(fname){
+    argv <- commandArgs(trailingOnly = FALSE)
+    base_dir <- dirname(substring(argv[grep("--file=", argv)], 8))
+    source(paste(base_dir, fname, sep="/"))
+}
+source_local("R/generate-json-output.R")
+
 
 # Write out
 write = function(input, output) {
@@ -259,10 +270,18 @@ if (dir.exists(directory)) {
 # Read SNP counts file
 message(paste('Reading', args$counts_file))
 if(args$facets2n_lib_path != ''){
-    read_counts = read_snp_matrix_facets2n(args$counts_file,MandUnormal= args$MandUnormal, ReferencePileupFile=args$reference_snp_pileup, ReferenceLoessFile=args$reference_loess_file, useMatchedX=args$useMatchedX, refX=args$refX, unmatched=args$unmatched)
+    read_counts = read_snp_matrix_facets2n(
+        args$counts_file, 
+        MandUnormal = args$MandUnormal, 
+        ReferencePileupFile = args$reference_snp_pileup, 
+        ReferenceLoessFile = args$reference_loess_file, 
+        useMatchedX = args$useMatchedX, 
+        refX = args$refX, 
+        unmatched = args$unmatched)
+
     if(!is.null(args$donor_counts_file)){
         message(paste('Reading donor counts matrix', args$donor_counts_file))
-        donor_counts = read_snp_matrix_facets2n(args$donor_counts_file, donorCounts=TRUE)
+        donor_counts = read_snp_matrix_facets2n(args$donor_counts_file, donorCounts = TRUE)
     }else{
         donor_counts = NULL
     }
@@ -331,7 +350,7 @@ if (!is.null(args$purity_cval)) {
         write(qc, paste0(name, '.qc.txt'))
 
         # Write gene level // use hisensitivity run
-        gene_level = gene_level_changes(hisens_output, args$genome, args$targetFile) %>%
+        gene_level = gene_level_changes(hisens_output, args$genome, targetFile = args$targetFile) %>%
             add_column(sample = sample_id, .before = 1)
         write(gene_level, paste0(name, '.gene_level.txt'))
 
@@ -381,11 +400,29 @@ if (!is.null(args$purity_cval)) {
 
         # Generate optional json output
         if (args$json_output) {
+            # params to be included in json
+            json_params = list(cval = args$cval,
+                        purity_cval = args$purity_cval,
+                        ndepth = args$normal_depth,
+                        snp_nbhd = args$snp_window_size,
+                        min_nhet = args$min_nhet,
+                        purity_min_nhet = args$purity_min_nhet,
+                        genome = args$genome,
+                        seed = args$seed,
+                        MandUnormal = args$MandUnormal,
+                        useMatchedX = args$useMatchedX,
+                        unmatched = args$unmatched,
+                        cbs = args$cbs,
+                        het_thresh = args$het_thresh,
+                        sample_id = args$sample_id,
+                        donor_counts = exists("args.donor-counts-file"),
+                        facets_version = as.character(packageVersion('facets')))   
+
             generate_json(hisens_output = hisens_output,
                         purity_output = purity_output,
                         gene_level = gene_level,
-                        arm_level = arm_level
-                        name = name)
+                        arm_level = arm_level,
+                        parameters = json_params)
             
         }
     }
@@ -454,10 +491,31 @@ if (!is.null(args$purity_cval)) {
     }
 
     # Generate optional json output
-    if (args$json_output) {
-        generate_json(hisens_output = output,
-                      purity_output = NULL,
-                      gene_level = gene_level,
-                      arm_level = arm_level)
+
+    if (args$json_output) {        
+        # params to be included in json
+        json_params = list(cval = args$cval,
+                    purity_cval = args$purity_cval,
+                    ndepth = args$normal_depth,
+                    snp_nbhd = args$snp_window_size,
+                    min_nhet = args$min_nhet,
+                    purity_min_nhet = args$purity_min_nhet,
+                    genome = args$genome,
+                    seed = args$seed,
+                    MandUnormal = args$MandUnormal,
+                    useMatchedX = args$useMatchedX,
+                    unmatched = args$unmatched,
+                    cbs = args$cbs,
+                    het_thresh = args$het_thresh,
+                    sample_id = args$sample_id,
+                    donor_counts = exists("args.donor-counts-file"),
+                    facets_version = as.character(packageVersion('facets')))    
+
+        generate_json(hisens_output = hisens_output,
+                    purity_output = purity_output,
+                    gene_level = gene_level,
+                    arm_level = arm_level,
+                    parameters = json_params)
+        
     }
 }
