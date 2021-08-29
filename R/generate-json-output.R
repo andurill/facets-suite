@@ -14,7 +14,7 @@
 #' 
 #' @examples
 #' \dontrun{
-#' generate-json-ouput(hisens_ouput, NULL, gene_level_ouput, arm_level_output, parameters)
+#' generate-json-ouput(hisens_output, NULL, gene_level_ouput, arm_level_output, parameters)
 #' }
 
 #' @export generate_json
@@ -23,25 +23,11 @@ generate_json = function(hisens_output,
                             gene_level,
                             arm_level,
                             parameters) {
-    # arm_level output currently not used
-    saveRDS(list(hisens_output, purity_output, gene_level, arm_level), file="facets_test.Rdata")
-    # jsonlite::write_json(
-    #     list("FACETS_PROCESSED_DATA_FOR_PLOT" = list(
-    #         "VERTICAL_LINE_X_COORD_LIST" = "VERTICAL_LINE_X_COORD_LIST", 
-    #         "Tick_Values" = "Tick_Values")), pretty=T,
-    #     path = "json_output.txt")
-    # return()
-    
+    # TODO: include arm_level output currently not included in json?
 
-    # grch37_coordinate
-    # TODO: do not define VERTICAL_LINE_X_COORD_LIST as a constant, instead compute based on the genome used.
-    VERTICAL_LINE_X_COORD_LIST = c(
-      0, 249250621, 492449994, 690472424, 881626700, 
-      1062541960, 1233657027, 1392795690, 1539159712, 
-      1680373143, 1815907890, 1950914406, 2084766301, 
-      2199936179, 2307285719, 2409817111, 2500171864, 
-      2581367074, 2659444322, 2718573305, 2781598825, 
-      2829728720, 2881033286, 3036303846)
+    # genomic cumsum coordinates for plotting
+    genome = get(paste0('genes_', parameters$genome))
+    VERTICAL_LINE_X_COORD_LIST = c(0, cumsum(genome$size))
 
     # x-axis tick values for chromosomes
     Tick_Values = floor(head(VERTICAL_LINE_X_COORD_LIST, -1) +
@@ -50,25 +36,27 @@ generate_json = function(hisens_output,
 
 
     # seg data for line plots
-    segs = as.data.table(hisens_output[[1]]$segs)
+    segs = as.data.table(hisens_output$segs)
 
     # gene data for line plots
-    genes = as.data.table(gene_level[[1]])
+    genes = as.data.table(gene_level)
 
     # snp level data for scatter plots
-    snps = as.data.table(hisens_output[[1]]$snps)
+    snps = as.data.table(hisens_output$snps)
+
     # assign dummy end location, which will be
     #  same as start location. Both start and end 
     #  are required for foverlaps function
     snps$maploc_end = snps$maploc
+
     # assing snp to a gene base on genomics coordinates
     setkey(genes, chrom, gene_start, gene_end)
     setkey(snps, chrom, maploc, maploc_end)
-    snps_gene_mapping = data.table::foverlaps(snps, genes, type="within")
+    snps_gene_mapping = foverlaps(snps, genes, type="within")
 
     # seg data for line plots mapped to all the genes
     #  within a given segment
-    hisens = as.data.table(hisens_output[[1]]$segs)
+    hisens = as.data.table(hisens_output$segs)
     hisens[aggregate(genes[,c(2)], 
                     by = genes[,c(3,10,11)], function(genes) paste(genes, collapse = ",")), 
           on=c(chrom = "chrom", 
@@ -377,16 +365,47 @@ generate_json = function(hisens_output,
                           "EM" = EM_ICNP),
           "Gene_Dictionary" = gene_dict,
           "All_Genes_List" = genes$gene),
-        "Parameters" = list(
-          "sample_id" = unbox(parameters$name),
+
+        # TODO: add arm level data to the json?
+        # "FACETS_ARM_LEVEL_DATA" = list(),
+
+        # TODO: include other parameters printed to run details file?
+        "PARAMETERS" = list(
+          # input parameters to facets
+          "sample_id" = unbox(parameters$sample_id),
           "purity_cval" = unbox(parameters$purity_cval),
           "cval" = unbox(parameters$cval),
-          "dipLogR" = unbox(parameters$dipLogR),
-          "purity_min_het" = unbox(parameters$purity_min_het),
-          "min_het" = unbox(parameters$min_het),
-          "normal_depth" = unbix(parameters$normal_depth)
+          "dipLogR" = unbox(hisens_output$dipLogR),
+          "purity_min_het" = unbox(parameters$purity_min_nhet),
+          "min_het" = unbox(parameters$min_nhet),
+          "normal_depth" = unbox(parameters$ndepth),
+          "snp_window_size" = unbox(parameters$snp_nbhd),
+
+          # variables from facets fit
+          "loglik" = unbox(purity_output$loglik),
+          "alBalLogR" = as.vector(purity_output$alBalLogR),
+          # TODO: print purity and ploidy from purity fit?
+          "purity" = unbox(hisens_output$purity),
+          "ploidy" = unbox(hisens_output$ploidy),
+
+          # facets2N parameters
+          "MandUnormal" = unbox(parameters$MandUnormal),
+          "useMatchedX" = unbox(parameters$useMatchedX),
+          "cbs" = unbox(parameters$cbs),
+          "het_thresh" = unbox(parameters$het_thresh),
+          # boolean variable to indicate if donor snp count data was used
+          "donor_counts" = unbox(parameters$donor_counts),
+          
+          # general parameters/variables
+          "genome" = unbox(parameters$genome),
+          "facets_version" = unbox(parameters$facets_version),
+          "unmatched" = unbox(parameters$unmatched),
+          "seed" = unbox(parameters$seed)
         )
-      ), pretty=T, path = paste0(parameters$name, "_facets_json_output.txt")
+      ), 
+      pretty=TRUE, 
+      path = paste0(parameters$sample_id, "_facets_output.json")
+    )
 }
 
 
