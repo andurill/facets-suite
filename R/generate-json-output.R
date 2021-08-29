@@ -27,7 +27,6 @@ generate_json = function(hisens_output,
 
     # genomic cumsum coordinates for plotting
     #genome = get(parameters$genome)
-    # TODO: uncomment the above line and delete the tibble
     genome  = tibble::tribble(
     ~chrom,     ~size, ~centstart,  ~centend, ~centromere,
     1, 249250621,  121535434, 124535434,   121535434,
@@ -427,6 +426,7 @@ generate_json = function(hisens_output,
           # general parameters/variables
           "genome" = unbox(parameters$genome),
           "facets_version" = unbox(parameters$facets_version),
+          "facetsSuite_version" = unbox(parameters$facetsSuite_version),
           "unmatched" = unbox(parameters$unmatched),
           "seed" = unbox(parameters$seed)
         )

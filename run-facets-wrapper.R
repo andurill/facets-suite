@@ -89,6 +89,8 @@ source_local <- function(fname){
     source(paste(base_dir, fname, sep="/"))
 }
 source_local("R/generate-json-output.R")
+source_local("R/gene-level-changes.R")
+#source_local("R/gene-level-changes.R")
 
 
 # Write out
@@ -416,7 +418,14 @@ if (!is.null(args$purity_cval)) {
                         het_thresh = args$het_thresh,
                         sample_id = args$sample_id,
                         donor_counts = exists("args.donor-counts-file"),
-                        facets_version = as.character(packageVersion('facets')))   
+                        facets_version = if(exists("args.facets2n-lib-path")) {
+                            paste0("facets2n_", as.character(packageVersion('facets2n')))
+                         } else {
+                             paste0("facets_", as.character(packageVersion('facets')))
+                         },
+                        facetsSuite_version = as.character(packageVersion('facetsSuite')) 
+                          
+            ) 
 
             generate_json(hisens_output = hisens_output,
                         purity_output = purity_output,
@@ -509,7 +518,13 @@ if (!is.null(args$purity_cval)) {
                     het_thresh = args$het_thresh,
                     sample_id = args$sample_id,
                     donor_counts = exists("args.donor-counts-file"),
-                    facets_version = as.character(packageVersion('facets')))    
+                    facets_version = if(exists("args.facets2n-lib-path")) {
+                        paste0("facets2n_", as.character(packageVersion('facets2n')))
+                        } else {
+                            paste0("facets_", as.character(packageVersion('facets')))
+                        },
+                    facetsSuite_version = as.character(packageVersion('facetsSuite'))
+        )    
 
         generate_json(hisens_output = hisens_output,
                     purity_output = purity_output,
