@@ -423,7 +423,8 @@ if (!is.null(args$purity_cval)) {
                          } else {
                              paste0("facets_", as.character(packageVersion('facets')))
                          },
-                        facetsSuite_version = as.character(packageVersion('facetsSuite')) 
+                        facetsSuite_version = as.character(packageVersion('facetsSuite')),
+                        outdir = directory 
                           
             ) 
 
@@ -523,7 +524,8 @@ if (!is.null(args$purity_cval)) {
                         } else {
                             paste0("facets_", as.character(packageVersion('facets')))
                         },
-                    facetsSuite_version = as.character(packageVersion('facetsSuite'))
+                    facetsSuite_version = as.character(packageVersion('facetsSuite')),
+                    outdir = directory
         )    
 
         generate_json(hisens_output = hisens_output,
