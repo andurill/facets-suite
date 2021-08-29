@@ -219,7 +219,7 @@ generate_json = function(hisens_output,
           list(
             "x" = unbox(VERTICAL_LINE_X_COORD_LIST[segs[i,]$chrom] + segs[i,]$end), 
             "y" = unbox(segs[i,]$lcn.em))))
-      Log_DR_counter = Log_DR_counter + 2
+      ICNP_counter = ICNP_counter + 2
     }
       
     # Gene level data segment of the json
@@ -375,6 +375,7 @@ generate_json = function(hisens_output,
         "Gene_List" = gene_list,
         "Gene_Data" = gene_data)
       names(gene_dict)[gene_dict_counter] = unbox(segment_id)
+      gene_dict_counter = gene_dict_counter + 1
     }
 
     jsonlite::write_json(
@@ -386,6 +387,7 @@ generate_json = function(hisens_output,
                             "Segment_mean" = Segment_mean,
                             "Scatter_Data" = CNLR_Scatter_Data),
           "VALORPlot" = list("Line_Data" = Line_Data_VALOR,
+          # TODO: is there a better way to label this data than using "Log_DR"?
                             "Log_DR" = Log_DR,
                             "Scatter_Data" = VALOR_Scatter_Data),
           "ICNPlot" = list("CNCF" = CNCF_ICNP,
@@ -432,7 +434,7 @@ generate_json = function(hisens_output,
         )
       ), 
       pretty=TRUE, 
-      path = paste0(parameters$sample_id, "_facets_output.json")
+      path = paste0(parameters$outdir, "/", parameters$sample_id, "_facets_output.json")
     )
 }
 
