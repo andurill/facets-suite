@@ -14,26 +14,27 @@
 #' 
 #' @examples
 #' \dontrun{
-#' generate-json-ouput(hisens_ouput, NULL, gene_level_ouput, arm_level_output)
+#' generate-json-ouput(hisens_ouput, NULL, gene_level_ouput, arm_level_output, parameters)
 #' }
 
-#' @export
+#' @export generate_json
 generate_json = function(hisens_output,
                             purity_output,
                             gene_level,
                             arm_level,
-                            name,
                             parameters) {
+    # arm_level output currently not used
     saveRDS(list(hisens_output, purity_output, gene_level, arm_level), file="facets_test.Rdata")
-    jsonlite::write_json(
-        list("FACETS_PROCESSED_DATA_FOR_PLOT" = list(
-            "VERTICAL_LINE_X_COORD_LIST" = "VERTICAL_LINE_X_COORD_LIST", 
-            "Tick_Values" = "Tick_Values")), pretty=T,
-        path = "json_output.txt")
-    return()
+    # jsonlite::write_json(
+    #     list("FACETS_PROCESSED_DATA_FOR_PLOT" = list(
+    #         "VERTICAL_LINE_X_COORD_LIST" = "VERTICAL_LINE_X_COORD_LIST", 
+    #         "Tick_Values" = "Tick_Values")), pretty=T,
+    #     path = "json_output.txt")
+    # return()
     
 
-    # grch37_coordinate 
+    # grch37_coordinate
+    # TODO: do not define VERTICAL_LINE_X_COORD_LIST as a constant, instead compute based on the genome used.
     VERTICAL_LINE_X_COORD_LIST = c(
       0, 249250621, 492449994, 690472424, 881626700, 
       1062541960, 1233657027, 1392795690, 1539159712, 
@@ -377,13 +378,15 @@ generate_json = function(hisens_output,
           "Gene_Dictionary" = gene_dict,
           "All_Genes_List" = genes$gene),
         "Parameters" = list(
-          "cval" = cval,
-          "purity_cval" = purity_cval,
-          "min_het" = min_het,
-          "purity_min_het" = purity_min_het,
-          "normal_depth" = normal_depth
+          "sample_id" = unbox(parameters$name),
+          "purity_cval" = unbox(parameters$purity_cval),
+          "cval" = unbox(parameters$cval),
+          "dipLogR" = unbox(parameters$dipLogR),
+          "purity_min_het" = unbox(parameters$purity_min_het),
+          "min_het" = unbox(parameters$min_het),
+          "normal_depth" = unbix(parameters$normal_depth)
         )
-      ), pretty=T, path = paste0(name, "_facets_json_output.txt")
+      ), pretty=T, path = paste0(parameters$name, "_facets_json_output.txt")
 }
 
 
