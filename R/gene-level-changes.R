@@ -50,10 +50,10 @@ gene_level_changes = function(facets_output,
     # Map segments onto genes
     key_cols = c('chrom', 'start', 'end')
     if (!is.null(targetFile)) {
-        genes = as.data.table(get_gene_from_targetFile(targetFile))
+        genes = data.table(get_gene_from_targetFile(targetFile))
     }
     else { 
-        genes = as.data.table(get(paste0('genes_', genome)))
+        genes = data.table(get(paste0('genes_', genome)))
     }
     genes[, chrom := ifelse(chrom == 'X', 23, chrom)]
     genes = genes[chrom %in% seq(1, 23)][, chrom := as.integer(chrom)]
@@ -143,11 +143,11 @@ gene_level_changes = function(facets_output,
 # }
 
 get_gene_from_targetFile = function(targetFile) {
-    genes = suppressWarnings(fread(paste0('grep -v "^@"', targetFile), 
+    genes = suppressWarnings(fread(cmd = paste0('grep -v "^@" ', targetFile), 
                             header = F,
-                            col.names = c("chr", "start", "end", "strand", "name"))) %>%
-        filter(grep("^Tiling_|^FP_|_intron_|_pseudo_|_MSI_|_tiling_|_promoter_", name, invert=TRUE)) %>%
-        mutate(chrom = str_replace(chrom, 'chr', ''),
+                            col.names = c("chrom", "start", "end", "strand", "name"))) %>%
+        filter(!grepl("^Tiling_|^FP_|_intron_|_pseudo_|_MSI_|_tiling_|_promoter_", name)) %>%
+        mutate(chrom = gsub('chr', '', chrom),
                 gene = gsub(":.*$", "", gsub("_target_.*$", "", name))) %>%
         group_by(gene, chrom) %>%
         summarize(start = min(start),
@@ -162,5 +162,3 @@ add_tag = function(filter, tag) {
            tag,
            paste(filter, tag, sep = ';'))
 }
-
-
